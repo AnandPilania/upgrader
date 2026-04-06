@@ -1,0 +1,26 @@
+#!/usr/bin/env php
+<?php
+
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require __DIR__ . '/../vendor/autoload.php';
+} elseif (file_exists(__DIR__ . '/../../../autoload.php')) {
+    require __DIR__ . '/../../../autoload.php';
+} else {
+    echo "Autoload file not found. Please run 'composer install'.\n";
+    exit(1);
+}
+
+use Upgrader\Console\UpgradeCommand;
+use Upgrader\Console\AnalyzeCommand;
+use Upgrader\Console\ModulesCommand;
+use Upgrader\Console\DetectCommand;
+use Symfony\Component\Console\Application;
+
+$application = new Application('Modular Upgrader', '2.0.0');
+
+$application->addCommand(new UpgradeCommand());
+$application->addCommand(new AnalyzeCommand());
+$application->addCommand(new ModulesCommand());
+$application->addCommand(new DetectCommand());
+
+$application->run();

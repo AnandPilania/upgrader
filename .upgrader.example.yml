@@ -1,0 +1,98 @@
+# Modular Upgrader Configuration
+
+# Project-wide settings
+project:
+  name: My Awesome App
+  path: .
+
+# Module-specific configurations
+modules:
+  # PHP Module Configuration
+  php:
+    strict_types: false
+    rector_enabled: true
+
+  # Laravel Module Configuration
+  laravel:
+    # Automatically detect and upgrade frontend framework
+    update_frontend: true
+
+    # Run tests after upgrade
+    run_tests: true
+
+    # Create database backup before migrations
+    backup_database: true
+
+  # JavaScript Module Configuration
+  javascript:
+    # Use Babel for transpilation
+    use_babel: true
+
+    # Minify output
+    minify: true
+
+  # TypeScript Module Configuration
+  typescript:
+    # Enable strict mode in tsconfig.json
+    strict_mode: true
+
+    # Automatically update @types packages
+    update_types: true
+
+  # React Module Configuration
+  reactjs:
+    # Automatically migrate class components to hooks
+    migrate_to_hooks: true
+
+    # Wrap app in React.StrictMode
+    enable_strict_mode: true
+
+    # Update @types/react packages (for TypeScript projects)
+    update_types: true
+
+  # Vue Module Configuration
+  vuejs:
+    # Migrate to Composition API when upgrading to Vue 3
+    use_composition_api: true
+
+    # Use <script setup> syntax
+    use_script_setup: true
+
+    # Migrate filters to computed properties
+    migrate_filters: true
+
+  # Tailwind CSS Module Configuration
+  tailwindcss:
+    # Enable JIT mode (auto in v3+)
+    enable_jit: true
+
+    # Update Tailwind CSS plugins
+    update_plugins: true
+
+# Global upgrade settings
+upgrade:
+  # Create backup before upgrade
+  auto_backup: true
+
+  # Automatically upgrade dependencies
+  with_dependencies: true
+
+  # Git settings
+  git:
+    auto_commit: true
+    commit_message_template: 'chore: upgrade {module} from {from} to {to}'
+    create_branch: true
+    branch_name_template: 'upgrade/{module}-{to}'
+
+# Exclusions (paths to skip during upgrade)
+exclusions:
+  paths:
+    - vendor
+    - node_modules
+    - .git
+    - storage
+    - public/build
+
+  files:
+    - .env
+    - .env.example
