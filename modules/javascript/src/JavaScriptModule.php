@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\JavaScript;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Upgrader\Core\AbstractModule;
 
 /**
@@ -11,7 +15,7 @@ use Upgrader\Core\AbstractModule;
 class JavaScriptModule extends AbstractModule
 {
     private array $versions = [
-        'ES5', 'ES6', 'ES2016', 'ES2017', 'ES2018', 'ES2019', 'ES2020', 'ES2021', 'ES2022', 'ES2023'
+        'ES5', 'ES6', 'ES2016', 'ES2017', 'ES2018', 'ES2019', 'ES2020', 'ES2021', 'ES2022', 'ES2023',
     ];
 
     public function getName(): string
@@ -87,27 +91,35 @@ class JavaScriptModule extends AbstractModule
 
         // Add transformers based on version upgrades
         if ($this->shouldUpgradeToES6($fromVersion, $toVersion)) {
-            $transformers[] = new Transformers\ES6\ArrowFunctionsTransformer();
-            $transformers[] = new Transformers\ES6\ClassSyntaxTransformer();
-            $transformers[] = new Transformers\ES6\TemplateLiteralsTransformer();
+            $transformers[] = new Transformers\ES6\ArrowFunctionsTransformer;
+            $transformers[] = new Transformers\ES6\ClassSyntaxTransformer;
+            $transformers[] = new Transformers\ES6\TemplateLiteralsTransformer;
         }
 
         if ($this->shouldUpgradeToES2020($fromVersion, $toVersion)) {
-            $transformers[] = new Transformers\ES2020\OptionalChainingTransformer();
-            $transformers[] = new Transformers\ES2020\NullishCoalescingTransformer();
+            $transformers[] = new Transformers\ES2020\OptionalChainingTransformer;
+            $transformers[] = new Transformers\ES2020\NullishCoalescingTransformer;
         }
 
         return $transformers;
     }
 
+    protected function getDefaultConfig(): array
+    {
+        return [
+            'use_babel' => true,
+            'minify' => true,
+        ];
+    }
+
     private function hasJavaScriptFiles(string $path): bool
     {
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             return false;
         }
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($path)
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($path)
         );
 
         foreach ($iterator as $file) {
@@ -134,7 +146,8 @@ class JavaScriptModule extends AbstractModule
     {
         // Modern browsers support up to ES2020 natively
         $modernVersions = ['ES2020', 'ES2021', 'ES2022', 'ES2023'];
-        return !in_array($targetVersion, $modernVersions);
+
+        return ! in_array($targetVersion, $modernVersions);
     }
 
     private function getRequiredPolyfills(string $targetVersion): array
@@ -164,12 +177,12 @@ class JavaScriptModule extends AbstractModule
     private function updatePackageJson(string $projectPath, string $version): void
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return;
         }
 
         $package = json_decode(file_get_contents($packageFile), true);
-        
+
         // Update browserslist
         $package['browserslist'] = $this->getBrowserslist($version);
 
@@ -188,13 +201,5 @@ class JavaScriptModule extends AbstractModule
         ];
 
         return $lists[$version] ?? $lists['ES6'];
-    }
-
-    protected function getDefaultConfig(): array
-    {
-        return [
-            'use_babel' => true,
-            'minify' => true,
-        ];
     }
 }

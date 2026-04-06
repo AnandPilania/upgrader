@@ -1,15 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Console;
 
-use Upgrader\Services\ModuleLoader;
-use Upgrader\Services\UpgradeOrchestrator;
+use Exception;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Console\Attribute\AsCommand;
+use Upgrader\Services\ModuleLoader;
+use Upgrader\Services\UpgradeOrchestrator;
 
 #[AsCommand(name: 'upgrade')]
 class UpgradeCommand extends Command
@@ -41,16 +44,17 @@ class UpgradeCommand extends Command
         $dryRun = $input->getOption('dry-run');
 
         // Load modules
-        $loader = new ModuleLoader();
+        $loader = new ModuleLoader;
         $registry = $loader->loadAllModules();
 
         // Auto-detect if no module specified
-        if (!$moduleName) {
+        if (! $moduleName) {
             $io->text('No module specified, auto-detecting...');
             $detected = $registry->detectModules($path);
 
             if (empty($detected)) {
                 $io->error('No modules detected in project');
+
                 return Command::FAILURE;
             }
 
@@ -66,23 +70,25 @@ class UpgradeCommand extends Command
         }
 
         $module = $registry->getModule($moduleName);
-        if (!$module) {
+        if (! $module) {
             $io->error("Module not found: {$moduleName}");
+
             return Command::FAILURE;
         }
 
         // Auto-detect versions if not specified
-        if (!$from) {
+        if (! $from) {
             $from = $module->detectCurrentVersion($path);
             if ($from) {
                 $io->text("Detected current version: <info>{$from}</info>");
             } else {
                 $io->error('Could not detect current version');
+
                 return Command::FAILURE;
             }
         }
 
-        if (!$to) {
+        if (! $to) {
             $availableVersions = $module->getAvailableVersions();
             $to = $io->choice(
                 'Select target version',
@@ -119,23 +125,25 @@ class UpgradeCommand extends Command
             if ($result['success']) {
                 $io->success('Upgrade completed successfully!');
 
-                if (!empty($result['summary'])) {
+                if (! empty($result['summary'])) {
                     $io->section('Upgrade Summary');
                     $io->listing($result['summary']);
                 }
 
-                if (!empty($result['manual_steps'])) {
+                if (! empty($result['manual_steps'])) {
                     $io->section('Manual Steps Required');
                     $io->warning($result['manual_steps']);
                 }
 
                 return Command::SUCCESS;
-            } else {
-                $io->error('Upgrade failed: ' . ($result['error'] ?? 'Unknown error'));
-                return Command::FAILURE;
             }
-        } catch (\Exception $e) {
+            $io->error('Upgrade failed: ' . ($result['error'] ?? 'Unknown error'));
+
+            return Command::FAILURE;
+
+        } catch (Exception $e) {
             $io->error('An error occurred: ' . $e->getMessage());
+
             return Command::FAILURE;
         }
     }
@@ -144,11 +152,11 @@ class UpgradeCommand extends Command
     {
         $configFile = $input->getOption('config');
 
-        if (!$configFile) {
+        if (! $configFile) {
             $configFile = getcwd() . '/.upgrader.yml';
         }
 
-        if (!file_exists($configFile)) {
+        if (! file_exists($configFile)) {
             return [];
         }
 

@@ -1,12 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\Laravel\Transformers\Laravel13;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Upgrader\Core\TransformerInterface;
 
 /**
  * Laravel 13 Transformer: VerifyCsrfToken -> PreventRequestForgery
- * 
+ *
  * Updates CSRF middleware references from the old VerifyCsrfToken
  * to the new PreventRequestForgery middleware name.
  */
@@ -31,14 +35,14 @@ class PreventRequestForgeryTransformer implements TransformerInterface
     {
         // Check if any files reference the old middleware
         $files = $this->getPhpFiles($projectPath);
-        
+
         foreach ($files as $file) {
             $content = file_get_contents($file);
             if (str_contains($content, 'VerifyCsrfToken')) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -117,13 +121,13 @@ class PreventRequestForgeryTransformer implements TransformerInterface
 
     private function getPhpFiles(string $directory): array
     {
-        if (!is_dir($directory)) {
+        if (! is_dir($directory)) {
             return [];
         }
 
         $files = [];
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($directory)
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($directory)
         );
 
         foreach ($iterator as $file) {

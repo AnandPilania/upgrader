@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\PHP;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Upgrader\Core\AbstractModule;
 
 /**
@@ -11,7 +15,7 @@ use Upgrader\Core\AbstractModule;
 class PHPModule extends AbstractModule
 {
     private array $versions = [
-        '7.4', '8.0', '8.1', '8.2', '8.3', '8.4'
+        '7.4', '8.0', '8.1', '8.2', '8.3', '8.4',
     ];
 
     public function getName(): string
@@ -31,7 +35,7 @@ class PHPModule extends AbstractModule
 
     public function canHandle(string $projectPath): bool
     {
-        return file_exists($projectPath . '/composer.json') || 
+        return file_exists($projectPath . '/composer.json') ||
                $this->hasPhpFiles($projectPath);
     }
 
@@ -42,7 +46,7 @@ class PHPModule extends AbstractModule
         if (file_exists($composerFile)) {
             $composer = json_decode(file_get_contents($composerFile), true);
             $phpVersion = $composer['require']['php'] ?? null;
-            
+
             if ($phpVersion && preg_match('/(\d+\.\d+)/', $phpVersion, $matches)) {
                 return $matches[1];
             }
@@ -60,7 +64,7 @@ class PHPModule extends AbstractModule
     public function analyze(string $projectPath, string $targetVersion): array
     {
         $currentVersion = $this->detectCurrentVersion($projectPath);
-        
+
         return [
             'current_version' => $currentVersion,
             'target_version' => $targetVersion,
@@ -110,9 +114,33 @@ class PHPModule extends AbstractModule
         }
 
         // Sort by priority
-        usort($transformers, fn($a, $b) => $b->getPriority() <=> $a->getPriority());
+        usort($transformers, fn ($a, $b) => $b->getPriority() <=> $a->getPriority());
 
         return $transformers;
+    }
+
+    public function getConfigSchema(): array
+    {
+        return [
+            'strict_types' => [
+                'type' => 'boolean',
+                'description' => 'Add declare(strict_types=1) to files',
+                'default' => false,
+            ],
+            'rector_enabled' => [
+                'type' => 'boolean',
+                'description' => 'Enable Rector for automated refactoring',
+                'default' => true,
+            ],
+        ];
+    }
+
+    protected function getDefaultConfig(): array
+    {
+        return [
+            'strict_types' => false,
+            'rector_enabled' => true,
+        ];
     }
 
     private function getVersionTransformers(string $from, string $to): array
@@ -121,28 +149,28 @@ class PHPModule extends AbstractModule
 
         // PHP 7.4 -> 8.0
         if ($from === '7.4' && $to === '8.0') {
-            $transformers[] = new Transformers\PHP80\NamedArgumentsTransformer();
-            $transformers[] = new Transformers\PHP80\UnionTypesTransformer();
-            $transformers[] = new Transformers\PHP80\NullsafeOperatorTransformer();
+            $transformers[] = new Transformers\PHP80\NamedArgumentsTransformer;
+            $transformers[] = new Transformers\PHP80\UnionTypesTransformer;
+            $transformers[] = new Transformers\PHP80\NullsafeOperatorTransformer;
         }
 
         // PHP 8.0 -> 8.1
         if ($from === '8.0' && $to === '8.1') {
-            $transformers[] = new Transformers\PHP81\EnumsTransformer();
-            $transformers[] = new Transformers\PHP81\ReadonlyPropertiesTransformer();
-            $transformers[] = new Transformers\PHP81\FibersTransformer();
+            $transformers[] = new Transformers\PHP81\EnumsTransformer;
+            $transformers[] = new Transformers\PHP81\ReadonlyPropertiesTransformer;
+            $transformers[] = new Transformers\PHP81\FibersTransformer;
         }
 
         // PHP 8.1 -> 8.2
         if ($from === '8.1' && $to === '8.2') {
-            $transformers[] = new Transformers\PHP82\ReadonlyClassesTransformer();
-            $transformers[] = new Transformers\PHP82\DisjunctiveNormalFormTransformer();
+            $transformers[] = new Transformers\PHP82\ReadonlyClassesTransformer;
+            $transformers[] = new Transformers\PHP82\DisjunctiveNormalFormTransformer;
         }
 
         // PHP 8.2 -> 8.3
         if ($from === '8.2' && $to === '8.3') {
-            $transformers[] = new Transformers\PHP83\TypedClassConstantsTransformer();
-            $transformers[] = new Transformers\PHP83\DynamicClassConstantFetchTransformer();
+            $transformers[] = new Transformers\PHP83\TypedClassConstantsTransformer;
+            $transformers[] = new Transformers\PHP83\DynamicClassConstantFetchTransformer;
         }
 
         return $transformers;
@@ -150,8 +178,8 @@ class PHPModule extends AbstractModule
 
     private function hasPhpFiles(string $path): bool
     {
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($path)
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($path)
         );
 
         foreach ($iterator as $file) {
@@ -166,7 +194,7 @@ class PHPModule extends AbstractModule
     private function updateComposerPhpVersion(string $projectPath, string $version): void
     {
         $composerFile = $projectPath . '/composer.json';
-        if (!file_exists($composerFile)) {
+        if (! file_exists($composerFile)) {
             return;
         }
 
@@ -207,29 +235,5 @@ class PHPModule extends AbstractModule
     private function checkCompatibility(string $projectPath, string $targetVersion): array
     {
         return [];
-    }
-
-    protected function getDefaultConfig(): array
-    {
-        return [
-            'strict_types' => false,
-            'rector_enabled' => true,
-        ];
-    }
-
-    public function getConfigSchema(): array
-    {
-        return [
-            'strict_types' => [
-                'type' => 'boolean',
-                'description' => 'Add declare(strict_types=1) to files',
-                'default' => false,
-            ],
-            'rector_enabled' => [
-                'type' => 'boolean',
-                'description' => 'Enable Rector for automated refactoring',
-                'default' => true,
-            ],
-        ];
     }
 }

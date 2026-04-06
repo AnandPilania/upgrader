@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\Laravel\Transformers\Laravel13;
 
 use Upgrader\Core\TransformerInterface;
 
 /**
  * Laravel 13 Transformer: Cache Configuration Updates
- * 
+ *
  * Adds the new serializable_classes configuration option to cache config.
  */
 class CacheConfigTransformer implements TransformerInterface
@@ -29,20 +31,21 @@ class CacheConfigTransformer implements TransformerInterface
     public function shouldRun(string $projectPath): bool
     {
         $configFile = $projectPath . '/config/cache.php';
-        
-        if (!file_exists($configFile)) {
+
+        if (! file_exists($configFile)) {
             return false;
         }
 
         $content = file_get_contents($configFile);
-        return !str_contains($content, 'serializable_classes');
+
+        return ! str_contains($content, 'serializable_classes');
     }
 
     public function transform(string $projectPath): array
     {
         $configFile = $projectPath . '/config/cache.php';
-        
-        if (!file_exists($configFile)) {
+
+        if (! file_exists($configFile)) {
             return [
                 'success' => false,
                 'message' => 'Cache configuration file not found',
@@ -50,7 +53,7 @@ class CacheConfigTransformer implements TransformerInterface
         }
 
         $content = file_get_contents($configFile);
-        
+
         // Add serializable_classes configuration
         // Find the stores array and add the config before it
         $insertion = <<<'PHP'
@@ -81,7 +84,7 @@ PHP;
             // Fallback: add at the end of the return array
             $content = preg_replace(
                 '/(\];)\s*$/',
-                $insertion . "$1",
+                $insertion . '$1',
                 $content
             );
         }

@@ -1,6 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Core;
+
+use RuntimeException;
 
 /**
  * Registry for managing all available modules
@@ -55,7 +59,7 @@ class ModuleRegistry
      */
     public function getModulesByType(string $interface): array
     {
-        return array_filter($this->modules, fn($module) => $module instanceof $interface);
+        return array_filter($this->modules, fn ($module) => $module instanceof $interface);
     }
 
     /**
@@ -68,14 +72,14 @@ class ModuleRegistry
         }
 
         $module = $this->getModule($name);
-        if (!$module) {
+        if (! $module) {
             return false;
         }
 
         // Initialize dependencies first
         foreach ($module->getDependencies() as $dependency) {
-            if (!$this->initializeModule($dependency, $config[$dependency] ?? [])) {
-                throw new \RuntimeException("Failed to initialize dependency: {$dependency}");
+            if (! $this->initializeModule($dependency, $config[$dependency] ?? [])) {
+                throw new RuntimeException("Failed to initialize dependency: {$dependency}");
             }
         }
 
@@ -129,7 +133,7 @@ class ModuleRegistry
 
         foreach ($this->modules as $name => $module) {
             foreach ($module->getDependencies() as $dependency) {
-                if (!$this->hasModule($dependency)) {
+                if (! $this->hasModule($dependency)) {
                     $errors[] = "Module '{$name}' depends on '{$dependency}' which is not registered";
                 }
             }
@@ -147,7 +151,7 @@ class ModuleRegistry
         $sorted = [];
         $visited = [];
 
-        $visit = function($name) use (&$visit, &$sorted, &$visited, $graph) {
+        $visit = function ($name) use (&$visit, &$sorted, &$visited, $graph) {
             if (isset($visited[$name])) {
                 return;
             }
@@ -165,6 +169,6 @@ class ModuleRegistry
             $visit($name);
         }
 
-        return array_map(fn($name) => $this->modules[$name], $sorted);
+        return array_map(fn ($name) => $this->modules[$name], $sorted);
     }
 }

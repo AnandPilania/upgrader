@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Services;
 
-use Upgrader\Core\ModuleRegistry;
+use Exception;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Upgrader\Core\ModuleRegistry;
 
 /**
  * Orchestrates upgrades across multiple modules and their dependencies
@@ -36,26 +39,26 @@ class UpgradeOrchestrator
         $this->io->section("Upgrading {$moduleName}");
 
         $module = $this->registry->getModule($moduleName);
-        if (!$module) {
+        if (! $module) {
             return [
                 'success' => false,
-                'error' => "Module not found: {$moduleName}"
+                'error' => "Module not found: {$moduleName}",
             ];
         }
 
         // Check if module is applicable
-        if (!$module->canHandle($projectPath)) {
+        if (! $module->canHandle($projectPath)) {
             return [
                 'success' => false,
-                'error' => "Module '{$moduleName}' is not applicable to this project"
+                'error' => "Module '{$moduleName}' is not applicable to this project",
             ];
         }
 
         // Validate upgrade is possible
-        if (!$module->canUpgrade($projectPath, $fromVersion, $toVersion)) {
+        if (! $module->canUpgrade($projectPath, $fromVersion, $toVersion)) {
             return [
                 'success' => false,
-                'error' => "Cannot upgrade from {$fromVersion} to {$toVersion}"
+                'error' => "Cannot upgrade from {$fromVersion} to {$toVersion}",
             ];
         }
 
@@ -67,7 +70,7 @@ class UpgradeOrchestrator
         if ($withDependencies) {
             $depResults = $this->upgradeDependencies($module, $projectPath, $dryRun);
             $results['dependencies'] = $depResults;
-            
+
             foreach ($depResults as $depName => $depResult) {
                 if ($depResult['success']) {
                     $summary[] = "✓ Upgraded dependency: {$depName}";
@@ -79,15 +82,15 @@ class UpgradeOrchestrator
 
         // 2. Perform the main upgrade
         try {
-            if (!$dryRun) {
-                $this->io->text("Performing upgrade...");
+            if (! $dryRun) {
+                $this->io->text('Performing upgrade...');
                 $upgradeResult = $module->upgrade($projectPath, $fromVersion, $toVersion);
                 $results['main_upgrade'] = $upgradeResult;
 
                 if ($upgradeResult['success']) {
                     $this->upgraded[$moduleName] = true;
                     $summary[] = "✓ Upgraded {$moduleName} from {$fromVersion} to {$toVersion}";
-                    
+
                     // Collect manual steps from transformers
                     if (isset($upgradeResult['results'])) {
                         $manualSteps = $this->collectManualSteps($upgradeResult['results']);
@@ -106,13 +109,58 @@ class UpgradeOrchestrator
                 'summary' => $summary,
                 'manual_steps' => $manualSteps,
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return [
                 'success' => false,
                 'error' => $e->getMessage(),
                 'summary' => $summary,
             ];
         }
+    }
+
+    /**
+     * Get upgrade plan (what will be upgraded)
+     */
+    public function getPlan(
+        string $moduleName,
+        string $projectPath,
+        string $fromVersion,
+        string $toVersion,
+        bool $withDependencies = false
+    ): array {
+        $module = $this->registry->getModule($moduleName);
+        if (! $module) {
+            return [];
+        }
+
+        $plan = [
+            'module' => $moduleName,
+            'from' => $fromVersion,
+            'to' => $toVersion,
+            'path' => $module->getUpgradePath($fromVersion, $toVersion),
+            'dependencies' => [],
+        ];
+
+        if ($withDependencies) {
+            foreach ($module->getDependencies() as $depName) {
+                $depModule = $this->registry->getModule($depName);
+                if ($depModule && $depModule->canHandle($projectPath)) {
+                    $currentVersion = $depModule->detectCurrentVersion($projectPath);
+                    $availableVersions = $depModule->getAvailableVersions();
+                    $targetVersion = end($availableVersions);
+
+                    if ($currentVersion && $currentVersion !== $targetVersion) {
+                        $plan['dependencies'][$depName] = [
+                            'from' => $currentVersion,
+                            'to' => $targetVersion,
+                            'path' => $depModule->getUpgradePath($currentVersion, $targetVersion),
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $plan;
     }
 
     /**
@@ -127,40 +175,44 @@ class UpgradeOrchestrator
             return $results;
         }
 
-        $this->io->text("Checking dependencies: " . implode(', ', $dependencies));
+        $this->io->text('Checking dependencies: ' . implode(', ', $dependencies));
 
         foreach ($dependencies as $depName) {
             // Skip if already upgraded in this session
             if (isset($this->upgraded[$depName])) {
                 $results[$depName] = ['success' => true, 'skipped' => 'already_upgraded'];
+
                 continue;
             }
 
             $depModule = $this->registry->getModule($depName);
-            if (!$depModule) {
+            if (! $depModule) {
                 $results[$depName] = [
                     'success' => false,
-                    'error' => 'Module not found'
+                    'error' => 'Module not found',
                 ];
+
                 continue;
             }
 
             // Check if dependency is applicable
-            if (!$depModule->canHandle($projectPath)) {
+            if (! $depModule->canHandle($projectPath)) {
                 $results[$depName] = [
                     'success' => true,
-                    'skipped' => 'not_applicable'
+                    'skipped' => 'not_applicable',
                 ];
+
                 continue;
             }
 
             // Detect current version
             $currentVersion = $depModule->detectCurrentVersion($projectPath);
-            if (!$currentVersion) {
+            if (! $currentVersion) {
                 $results[$depName] = [
                     'success' => false,
-                    'error' => 'Could not detect current version'
+                    'error' => 'Could not detect current version',
                 ];
+
                 continue;
             }
 
@@ -172,8 +224,9 @@ class UpgradeOrchestrator
             if ($currentVersion === $targetVersion) {
                 $results[$depName] = [
                     'success' => true,
-                    'skipped' => 'already_latest'
+                    'skipped' => 'already_latest',
                 ];
+
                 continue;
             }
 
@@ -218,50 +271,5 @@ class UpgradeOrchestrator
         }
 
         return array_unique($manualSteps);
-    }
-
-    /**
-     * Get upgrade plan (what will be upgraded)
-     */
-    public function getPlan(
-        string $moduleName,
-        string $projectPath,
-        string $fromVersion,
-        string $toVersion,
-        bool $withDependencies = false
-    ): array {
-        $module = $this->registry->getModule($moduleName);
-        if (!$module) {
-            return [];
-        }
-
-        $plan = [
-            'module' => $moduleName,
-            'from' => $fromVersion,
-            'to' => $toVersion,
-            'path' => $module->getUpgradePath($fromVersion, $toVersion),
-            'dependencies' => [],
-        ];
-
-        if ($withDependencies) {
-            foreach ($module->getDependencies() as $depName) {
-                $depModule = $this->registry->getModule($depName);
-                if ($depModule && $depModule->canHandle($projectPath)) {
-                    $currentVersion = $depModule->detectCurrentVersion($projectPath);
-                    $availableVersions = $depModule->getAvailableVersions();
-                    $targetVersion = end($availableVersions);
-
-                    if ($currentVersion && $currentVersion !== $targetVersion) {
-                        $plan['dependencies'][$depName] = [
-                            'from' => $currentVersion,
-                            'to' => $targetVersion,
-                            'path' => $depModule->getUpgradePath($currentVersion, $targetVersion),
-                        ];
-                    }
-                }
-            }
-        }
-
-        return $plan;
     }
 }

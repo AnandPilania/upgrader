@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\TypeScript;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Upgrader\Core\AbstractModule;
 
 /**
@@ -14,7 +18,7 @@ class TypeScriptModule extends AbstractModule
 
     private array $versions = [
         '4.0', '4.1', '4.2', '4.3', '4.4', '4.5', '4.6', '4.7', '4.8', '4.9',
-        '5.0', '5.1', '5.2', '5.3', '5.4'
+        '5.0', '5.1', '5.2', '5.3', '5.4',
     ];
 
     public function getName(): string
@@ -41,7 +45,7 @@ class TypeScriptModule extends AbstractModule
     public function detectCurrentVersion(string $projectPath): ?string
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return null;
         }
 
@@ -67,11 +71,11 @@ class TypeScriptModule extends AbstractModule
     public function analyze(string $projectPath, string $targetVersion): array
     {
         $currentVersion = $this->detectCurrentVersion($projectPath);
-        
+
         // Get JavaScript module analysis
         $jsModule = $this->getDependency('javascript');
         $jsAnalysis = null;
-        
+
         if ($jsModule) {
             $targetES = $this->getTargetECMAScript($targetVersion);
             $jsAnalysis = $jsModule->analyze($projectPath, $targetES);
@@ -97,7 +101,7 @@ class TypeScriptModule extends AbstractModule
         if ($jsModule) {
             $currentES = $this->getTargetECMAScript($fromVersion);
             $targetES = $this->getTargetECMAScript($toVersion);
-            
+
             if ($currentES !== $targetES) {
                 $this->log("Upgrading JavaScript target from {$currentES} to {$targetES}");
                 $results['javascript_upgrade'] = $jsModule->upgrade(
@@ -154,14 +158,38 @@ class TypeScriptModule extends AbstractModule
         return $transformers;
     }
 
+    public function getConfigSchema(): array
+    {
+        return [
+            'strict_mode' => [
+                'type' => 'boolean',
+                'description' => 'Enable TypeScript strict mode',
+                'default' => true,
+            ],
+            'update_types' => [
+                'type' => 'boolean',
+                'description' => 'Automatically update @types packages',
+                'default' => true,
+            ],
+        ];
+    }
+
+    protected function getDefaultConfig(): array
+    {
+        return [
+            'strict_mode' => true,
+            'update_types' => true,
+        ];
+    }
+
     private function getVersionTransformers(string $from, string $to): array
     {
         $transformers = [];
 
         // TypeScript 4.x -> 5.x
         if (version_compare($from, '5.0', '<') && version_compare($to, '5.0', '>=')) {
-            $transformers[] = new Transformers\TS5\DecoratorsTransformer();
-            $transformers[] = new Transformers\TS5\ConstTypeParametersTransformer();
+            $transformers[] = new Transformers\TS5\DecoratorsTransformer;
+            $transformers[] = new Transformers\TS5\ConstTypeParametersTransformer;
         }
 
         return $transformers;
@@ -169,12 +197,12 @@ class TypeScriptModule extends AbstractModule
 
     private function hasTypeScriptFiles(string $path): bool
     {
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             return false;
         }
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($path)
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($path)
         );
 
         foreach ($iterator as $file) {
@@ -238,15 +266,15 @@ class TypeScriptModule extends AbstractModule
     private function updateTsConfig(string $projectPath, string $version): void
     {
         $tsConfigFile = $projectPath . '/tsconfig.json';
-        if (!file_exists($tsConfigFile)) {
+        if (! file_exists($tsConfigFile)) {
             return;
         }
 
         $tsConfig = json_decode(file_get_contents($tsConfigFile), true);
-        
+
         // Update target
         $tsConfig['compilerOptions']['target'] = $this->getTargetECMAScript($version);
-        
+
         // Update lib
         $tsConfig['compilerOptions']['lib'] = $this->getLibraries($version);
 
@@ -259,12 +287,12 @@ class TypeScriptModule extends AbstractModule
     private function updatePackageJson(string $projectPath, string $version): void
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return;
         }
 
         $package = json_decode(file_get_contents($packageFile), true);
-        
+
         if (isset($package['devDependencies']['typescript'])) {
             $package['devDependencies']['typescript'] = "^{$version}";
         }
@@ -278,35 +306,11 @@ class TypeScriptModule extends AbstractModule
     private function getLibraries(string $version): array
     {
         $target = $this->getTargetECMAScript($version);
-        
+
         return [
-            strtolower($target),
+            mb_strtolower($target),
             'dom',
             'dom.iterable',
-        ];
-    }
-
-    protected function getDefaultConfig(): array
-    {
-        return [
-            'strict_mode' => true,
-            'update_types' => true,
-        ];
-    }
-
-    public function getConfigSchema(): array
-    {
-        return [
-            'strict_mode' => [
-                'type' => 'boolean',
-                'description' => 'Enable TypeScript strict mode',
-                'default' => true,
-            ],
-            'update_types' => [
-                'type' => 'boolean',
-                'description' => 'Automatically update @types packages',
-                'default' => true,
-            ],
         ];
     }
 }

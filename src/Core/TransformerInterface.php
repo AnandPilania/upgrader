@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Core;
 
 /**
@@ -29,8 +31,8 @@ interface TransformerInterface
 
     /**
      * Transform the project
-     * 
-     * @param string $projectPath Path to project
+     *
+     * @param  string  $projectPath  Path to project
      * @return array Result with 'success', 'message', and 'changes'
      */
     public function transform(string $projectPath): array;

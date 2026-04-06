@@ -1,6 +1,6 @@
 # Modular Upgrader
 
-## 🎉 Version 2.0 - Now with Laravel 13 Support!
+## 🎉 Now with Laravel 13 Support!
 
 A comprehensive, modular upgrade tool for modern web development stacks. Automatically upgrade PHP, Laravel, React, Vue, Tailwind CSS, TypeScript, and JavaScript with intelligent dependency management.
 

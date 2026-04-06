@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Services;
 
 use Upgrader\Core\ModuleRegistry;
-use Upgrader\Modules\PHP\PHPModule;
+use Upgrader\Modules\JavaScript\JavaScriptModule;
 use Upgrader\Modules\Laravel\LaravelModule;
+use Upgrader\Modules\PHP\PHPModule;
 use Upgrader\Modules\ReactJS\ReactJSModule;
-use Upgrader\Modules\VueJS\VueJSModule;
 use Upgrader\Modules\TailwindCSS\TailwindCSSModule;
 use Upgrader\Modules\TypeScript\TypeScriptModule;
-use Upgrader\Modules\JavaScript\JavaScriptModule;
+use Upgrader\Modules\VueJS\VueJSModule;
 
 /**
  * Service for loading and registering all available modules
@@ -21,22 +23,22 @@ class ModuleLoader
      */
     public function loadAllModules(): ModuleRegistry
     {
-        $registry = new ModuleRegistry();
+        $registry = new ModuleRegistry;
 
         // Register base language modules (no dependencies)
-        $registry->register(new PHPModule());
-        $registry->register(new JavaScriptModule());
+        $registry->register(new PHPModule);
+        $registry->register(new JavaScriptModule);
 
         // Register language modules with dependencies
-        $registry->register(new TypeScriptModule());
+        $registry->register(new TypeScriptModule);
 
         // Register framework modules
-        $registry->register(new LaravelModule());
-        $registry->register(new ReactJSModule());
-        $registry->register(new VueJSModule());
+        $registry->register(new LaravelModule);
+        $registry->register(new ReactJSModule);
+        $registry->register(new VueJSModule);
 
         // Register CSS framework modules
-        $registry->register(new TailwindCSSModule());
+        $registry->register(new TailwindCSSModule);
 
         return $registry;
     }
@@ -46,7 +48,7 @@ class ModuleLoader
      */
     public function loadModules(array $moduleNames): ModuleRegistry
     {
-        $registry = new ModuleRegistry();
+        $registry = new ModuleRegistry;
         $allModules = $this->getAllAvailableModules();
 
         foreach ($moduleNames as $name) {
@@ -64,13 +66,13 @@ class ModuleLoader
     private function getAllAvailableModules(): array
     {
         return [
-            'php' => new PHPModule(),
-            'javascript' => new JavaScriptModule(),
-            'typescript' => new TypeScriptModule(),
-            'laravel' => new LaravelModule(),
-            'reactjs' => new ReactJSModule(),
-            'vuejs' => new VueJSModule(),
-            'tailwindcss' => new TailwindCSSModule(),
+            'php' => new PHPModule,
+            'javascript' => new JavaScriptModule,
+            'typescript' => new TypeScriptModule,
+            'laravel' => new LaravelModule,
+            'reactjs' => new ReactJSModule,
+            'vuejs' => new VueJSModule,
+            'tailwindcss' => new TailwindCSSModule,
         ];
     }
 }

@@ -1,14 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Console;
 
-use Upgrader\Services\ModuleLoader;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Console\Attribute\AsCommand;
+use Upgrader\Services\ModuleLoader;
 
 #[AsCommand(name: 'detect')]
 class DetectCommand extends Command
@@ -26,8 +28,9 @@ class DetectCommand extends Command
 
         $path = $input->getOption('path');
 
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             $io->error("Invalid project path: {$path}");
+
             return Command::FAILURE;
         }
 
@@ -35,13 +38,14 @@ class DetectCommand extends Command
         $io->text("Analyzing: <info>{$path}</info>");
         $io->newLine();
 
-        $loader = new ModuleLoader();
+        $loader = new ModuleLoader;
         $registry = $loader->loadAllModules();
 
         $detected = $registry->detectModules($path);
 
         if (empty($detected)) {
             $io->warning('No applicable modules detected');
+
             return Command::SUCCESS;
         }
 
@@ -74,7 +78,7 @@ class DetectCommand extends Command
             $module = $info['module'];
             $dependencies = $module->getDependencies();
 
-            if (!empty($dependencies)) {
+            if (! empty($dependencies)) {
                 $io->text("<info>{$moduleName}</info> depends on:");
                 foreach ($dependencies as $dep) {
                     $hasDepModule = isset($detected[$dep]);

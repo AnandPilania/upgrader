@@ -1,11 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\Laravel;
 
 use Upgrader\Core\AbstractModule;
-use Upgrader\Modules\PHP\PHPModule;
-use Upgrader\Modules\JavaScript\JavaScriptModule;
-use Upgrader\Modules\TypeScript\TypeScriptModule;
 
 /**
  * Laravel Framework Upgrade Module
@@ -16,7 +15,7 @@ class LaravelModule extends AbstractModule
     protected array $dependencies = ['php'];
 
     private array $versions = [
-        '8.0', '9.0', '10.0', '11.0', '12.0', '13.0'
+        '8.0', '9.0', '10.0', '11.0', '12.0', '13.0',
     ];
 
     public function getName(): string
@@ -37,18 +36,19 @@ class LaravelModule extends AbstractModule
     public function canHandle(string $projectPath): bool
     {
         $composerFile = $projectPath . '/composer.json';
-        if (!file_exists($composerFile)) {
+        if (! file_exists($composerFile)) {
             return false;
         }
 
         $composer = json_decode(file_get_contents($composerFile), true);
+
         return isset($composer['require']['laravel/framework']);
     }
 
     public function detectCurrentVersion(string $projectPath): ?string
     {
         $composerFile = $projectPath . '/composer.json';
-        if (!file_exists($composerFile)) {
+        if (! file_exists($composerFile)) {
             return null;
         }
 
@@ -70,15 +70,15 @@ class LaravelModule extends AbstractModule
     public function analyze(string $projectPath, string $targetVersion): array
     {
         $currentVersion = $this->detectCurrentVersion($projectPath);
-        
+
         // Get PHP module analysis
         $phpModule = $this->getDependency('php');
         $phpAnalysis = null;
-        
+
         if ($phpModule) {
             $requiredPhpVersion = $this->getRequiredPhpVersion($targetVersion);
             $currentPhpVersion = $phpModule->detectCurrentVersion($projectPath);
-            
+
             if (version_compare($currentPhpVersion, $requiredPhpVersion, '<')) {
                 $phpAnalysis = $phpModule->analyze($projectPath, $requiredPhpVersion);
             }
@@ -109,7 +109,7 @@ class LaravelModule extends AbstractModule
         if ($phpModule) {
             $requiredPhpVersion = $this->getRequiredPhpVersion($toVersion);
             $currentPhpVersion = $phpModule->detectCurrentVersion($projectPath);
-            
+
             if (version_compare($currentPhpVersion, $requiredPhpVersion, '<')) {
                 $this->log("Upgrading PHP from {$currentPhpVersion} to {$requiredPhpVersion}");
                 $results['php_upgrade'] = $phpModule->upgrade(
@@ -170,9 +170,39 @@ class LaravelModule extends AbstractModule
             );
         }
 
-        usort($transformers, fn($a, $b) => $b->getPriority() <=> $a->getPriority());
+        usort($transformers, fn ($a, $b) => $b->getPriority() <=> $a->getPriority());
 
         return $transformers;
+    }
+
+    public function getConfigSchema(): array
+    {
+        return [
+            'update_frontend' => [
+                'type' => 'boolean',
+                'description' => 'Automatically update frontend dependencies',
+                'default' => true,
+            ],
+            'run_tests' => [
+                'type' => 'boolean',
+                'description' => 'Run tests after upgrade',
+                'default' => true,
+            ],
+            'backup_database' => [
+                'type' => 'boolean',
+                'description' => 'Create database backup before migration',
+                'default' => true,
+            ],
+        ];
+    }
+
+    protected function getDefaultConfig(): array
+    {
+        return [
+            'update_frontend' => true,
+            'run_tests' => true,
+            'backup_database' => true,
+        ];
     }
 
     private function getVersionTransformers(string $from, string $to): array
@@ -181,28 +211,28 @@ class LaravelModule extends AbstractModule
 
         // Laravel 8 -> 9
         if ($from === '8.0' && $to === '9.0') {
-            $transformers[] = new Transformers\Laravel9\RouteNamespaceTransformer();
-            $transformers[] = new Transformers\Laravel9\FlysystemTransformer();
-            $transformers[] = new Transformers\Laravel9\StringHelpersTransformer();
+            $transformers[] = new Transformers\Laravel9\RouteNamespaceTransformer;
+            $transformers[] = new Transformers\Laravel9\FlysystemTransformer;
+            $transformers[] = new Transformers\Laravel9\StringHelpersTransformer;
         }
 
         // Laravel 9 -> 10
         if ($from === '9.0' && $to === '10.0') {
-            $transformers[] = new Transformers\Laravel10\NativeTypesTransformer();
-            $transformers[] = new Transformers\Laravel10\InvokableRulesTransformer();
+            $transformers[] = new Transformers\Laravel10\NativeTypesTransformer;
+            $transformers[] = new Transformers\Laravel10\InvokableRulesTransformer;
         }
 
         // Laravel 10 -> 11
         if ($from === '10.0' && $to === '11.0') {
-            $transformers[] = new Transformers\Laravel11\ApplicationStructureTransformer();
-            $transformers[] = new Transformers\Laravel11\HealthRoutingTransformer();
+            $transformers[] = new Transformers\Laravel11\ApplicationStructureTransformer;
+            $transformers[] = new Transformers\Laravel11\HealthRoutingTransformer;
         }
 
         // Laravel 12 -> 13
         if ($from === '12.0' && $to === '13.0') {
-            $transformers[] = new Transformers\Laravel13\PreventRequestForgeryTransformer();
-            $transformers[] = new Transformers\Laravel13\CacheConfigTransformer();
-            $transformers[] = new Transformers\Laravel13\PolymorphicPivotTransformer();
+            $transformers[] = new Transformers\Laravel13\PreventRequestForgeryTransformer;
+            $transformers[] = new Transformers\Laravel13\CacheConfigTransformer;
+            $transformers[] = new Transformers\Laravel13\PolymorphicPivotTransformer;
         }
 
         return $transformers;
@@ -225,7 +255,7 @@ class LaravelModule extends AbstractModule
     private function detectFrontendFramework(string $projectPath): ?string
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return null;
         }
 
@@ -250,7 +280,7 @@ class LaravelModule extends AbstractModule
     {
         // Detect frontend language (JS or TS)
         $useTypeScript = file_exists($projectPath . '/tsconfig.json');
-        
+
         if ($useTypeScript && $this->registry->hasModule('typescript')) {
             $tsModule = $this->registry->getModule('typescript');
             // Upgrade TypeScript first if needed
@@ -259,7 +289,7 @@ class LaravelModule extends AbstractModule
         // Then upgrade the frontend framework
         $currentVersion = $module->detectCurrentVersion($projectPath);
         $targetVersion = $this->getLatestCompatibleVersion($module);
-        
+
         if ($currentVersion && $targetVersion) {
             return $module->upgrade($projectPath, $currentVersion, $targetVersion);
         }
@@ -270,13 +300,14 @@ class LaravelModule extends AbstractModule
     private function getLatestCompatibleVersion($module): ?string
     {
         $versions = $module->getAvailableVersions();
+
         return end($versions) ?: null;
     }
 
     private function updateComposerFile(string $projectPath, string $version): void
     {
         $composerFile = $projectPath . '/composer.json';
-        if (!file_exists($composerFile)) {
+        if (! file_exists($composerFile)) {
             return;
         }
 
@@ -309,35 +340,5 @@ class LaravelModule extends AbstractModule
     {
         // Implementation would return dependency updates
         return [];
-    }
-
-    protected function getDefaultConfig(): array
-    {
-        return [
-            'update_frontend' => true,
-            'run_tests' => true,
-            'backup_database' => true,
-        ];
-    }
-
-    public function getConfigSchema(): array
-    {
-        return [
-            'update_frontend' => [
-                'type' => 'boolean',
-                'description' => 'Automatically update frontend dependencies',
-                'default' => true,
-            ],
-            'run_tests' => [
-                'type' => 'boolean',
-                'description' => 'Run tests after upgrade',
-                'default' => true,
-            ],
-            'backup_database' => [
-                'type' => 'boolean',
-                'description' => 'Create database backup before migration',
-                'default' => true,
-            ],
-        ];
     }
 }

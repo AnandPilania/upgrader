@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\TailwindCSS;
 
 use Upgrader\Core\AbstractModule;
@@ -11,7 +13,7 @@ use Upgrader\Core\AbstractModule;
 class TailwindCSSModule extends AbstractModule
 {
     private array $versions = [
-        '2.0', '2.1', '2.2', '3.0', '3.1', '3.2', '3.3', '3.4'
+        '2.0', '2.1', '2.2', '3.0', '3.1', '3.2', '3.3', '3.4',
     ];
 
     public function getName(): string
@@ -55,7 +57,7 @@ class TailwindCSSModule extends AbstractModule
     public function detectCurrentVersion(string $projectPath): ?string
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return null;
         }
 
@@ -148,16 +150,40 @@ class TailwindCSSModule extends AbstractModule
         return $transformers;
     }
 
+    public function getConfigSchema(): array
+    {
+        return [
+            'enable_jit' => [
+                'type' => 'boolean',
+                'description' => 'Enable JIT mode',
+                'default' => true,
+            ],
+            'update_plugins' => [
+                'type' => 'boolean',
+                'description' => 'Update Tailwind CSS plugins',
+                'default' => true,
+            ],
+        ];
+    }
+
+    protected function getDefaultConfig(): array
+    {
+        return [
+            'enable_jit' => true,
+            'update_plugins' => true,
+        ];
+    }
+
     private function getVersionTransformers(string $from, string $to): array
     {
         $transformers = [];
 
         // Tailwind 2.x -> 3.0
         if (version_compare($from, '3.0', '<') && version_compare($to, '3.0', '>=')) {
-            $transformers[] = new Transformers\Tailwind3\ColorPaletteTransformer();
-            $transformers[] = new Transformers\Tailwind3\PurgeToContentTransformer();
-            $transformers[] = new Transformers\Tailwind3\JITEnabledTransformer();
-            $transformers[] = new Transformers\Tailwind3\DeprecatedClassesTransformer();
+            $transformers[] = new Transformers\Tailwind3\ColorPaletteTransformer;
+            $transformers[] = new Transformers\Tailwind3\PurgeToContentTransformer;
+            $transformers[] = new Transformers\Tailwind3\JITEnabledTransformer;
+            $transformers[] = new Transformers\Tailwind3\DeprecatedClassesTransformer;
         }
 
         return $transformers;
@@ -172,7 +198,7 @@ class TailwindCSSModule extends AbstractModule
     {
         $fromMajor = (int) explode('.', $from)[0];
         $toMajor = (int) explode('.', $to)[0];
-        
+
         return $fromMajor !== $toMajor;
     }
 
@@ -221,12 +247,12 @@ class TailwindCSSModule extends AbstractModule
     private function updatePackageJson(string $projectPath, string $version): void
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return;
         }
 
         $package = json_decode(file_get_contents($packageFile), true);
-        
+
         if (isset($package['devDependencies']['tailwindcss'])) {
             $package['devDependencies']['tailwindcss'] = "^{$version}";
         }
@@ -251,11 +277,11 @@ class TailwindCSSModule extends AbstractModule
     {
         $configFile = $projectPath . '/tailwind.config.js';
         $configFileTs = $projectPath . '/tailwind.config.ts';
-        
-        $targetFile = file_exists($configFile) ? $configFile : 
+
+        $targetFile = file_exists($configFile) ? $configFile :
                      (file_exists($configFileTs) ? $configFileTs : null);
 
-        if (!$targetFile) {
+        if (! $targetFile) {
             return;
         }
 
@@ -265,7 +291,7 @@ class TailwindCSSModule extends AbstractModule
         if (version_compare($version, '3.0', '>=')) {
             // Replace purge with content
             $content = preg_replace('/purge\s*:/', 'content:', $content);
-            
+
             // Remove mode: 'jit'
             $content = preg_replace('/mode\s*:\s*[\'"]jit[\'"]\s*,?\s*/', '', $content);
         }
@@ -276,36 +302,12 @@ class TailwindCSSModule extends AbstractModule
     private function updatePostCSSConfig(string $projectPath, string $version): void
     {
         $postcssFile = $projectPath . '/postcss.config.js';
-        
-        if (!file_exists($postcssFile)) {
+
+        if (! file_exists($postcssFile)) {
             return;
         }
 
         // Update PostCSS config if needed for Tailwind 3
         // Implementation would go here
-    }
-
-    protected function getDefaultConfig(): array
-    {
-        return [
-            'enable_jit' => true,
-            'update_plugins' => true,
-        ];
-    }
-
-    public function getConfigSchema(): array
-    {
-        return [
-            'enable_jit' => [
-                'type' => 'boolean',
-                'description' => 'Enable JIT mode',
-                'default' => true,
-            ],
-            'update_plugins' => [
-                'type' => 'boolean',
-                'description' => 'Update Tailwind CSS plugins',
-                'default' => true,
-            ],
-        ];
     }
 }

@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\VueJS;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Upgrader\Core\AbstractModule;
 
 /**
@@ -11,7 +15,7 @@ use Upgrader\Core\AbstractModule;
 class VueJSModule extends AbstractModule
 {
     private array $versions = [
-        '2.6', '2.7', '3.0', '3.1', '3.2', '3.3', '3.4'
+        '2.6', '2.7', '3.0', '3.1', '3.2', '3.3', '3.4',
     ];
 
     public function getName(): string
@@ -38,7 +42,7 @@ class VueJSModule extends AbstractModule
     public function canHandle(string $projectPath): bool
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return false;
         }
 
@@ -54,7 +58,7 @@ class VueJSModule extends AbstractModule
     public function detectCurrentVersion(string $projectPath): ?string
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return null;
         }
 
@@ -77,15 +81,15 @@ class VueJSModule extends AbstractModule
     {
         $currentVersion = $this->detectCurrentVersion($projectPath);
         $useTypeScript = $this->usesTypeScript($projectPath);
-        
+
         // Get language module analysis
         $langModule = $this->getLanguageModule($projectPath);
         $langAnalysis = null;
-        
+
         if ($langModule) {
             $currentLangVersion = $langModule->detectCurrentVersion($projectPath);
             $targetLangVersion = $this->getRecommendedLanguageVersion($targetVersion, $useTypeScript);
-            
+
             if ($currentLangVersion && version_compare($currentLangVersion, $targetLangVersion, '<')) {
                 $langAnalysis = $langModule->analyze($projectPath, $targetLangVersion);
             }
@@ -115,9 +119,9 @@ class VueJSModule extends AbstractModule
         if ($langModule) {
             $currentLangVersion = $langModule->detectCurrentVersion($projectPath);
             $targetLangVersion = $this->getRecommendedLanguageVersion($toVersion, $useTypeScript);
-            
+
             if ($currentLangVersion && version_compare($currentLangVersion, $targetLangVersion, '<')) {
-                $this->log("Upgrading " . ($useTypeScript ? 'TypeScript' : 'JavaScript'));
+                $this->log('Upgrading ' . ($useTypeScript ? 'TypeScript' : 'JavaScript'));
                 $results['language_upgrade'] = $langModule->upgrade(
                     $projectPath,
                     $currentLangVersion,
@@ -172,9 +176,34 @@ class VueJSModule extends AbstractModule
             );
         }
 
-        usort($transformers, fn($a, $b) => $b->getPriority() <=> $a->getPriority());
+        usort($transformers, fn ($a, $b) => $b->getPriority() <=> $a->getPriority());
 
         return $transformers;
+    }
+
+    public function getConfigSchema(): array
+    {
+        return [
+            'use_composition_api' => [
+                'type' => 'boolean',
+                'description' => 'Migrate to Composition API',
+                'default' => true,
+            ],
+            'use_script_setup' => [
+                'type' => 'boolean',
+                'description' => 'Use <script setup> syntax',
+                'default' => true,
+            ],
+        ];
+    }
+
+    protected function getDefaultConfig(): array
+    {
+        return [
+            'use_composition_api' => true,
+            'use_script_setup' => true,
+            'migrate_filters' => true,
+        ];
     }
 
     private function getVersionTransformers(string $from, string $to): array
@@ -183,15 +212,15 @@ class VueJSModule extends AbstractModule
 
         // Vue 2.x -> 3.0
         if (version_compare($from, '3.0', '<') && version_compare($to, '3.0', '>=')) {
-            $transformers[] = new Transformers\Vue3\GlobalAPITransformer();
-            $transformers[] = new Transformers\Vue3\VModelTransformer();
-            $transformers[] = new Transformers\Vue3\FiltersTransformer();
-            $transformers[] = new Transformers\Vue3\FunctionalComponentsTransformer();
+            $transformers[] = new Transformers\Vue3\GlobalAPITransformer;
+            $transformers[] = new Transformers\Vue3\VModelTransformer;
+            $transformers[] = new Transformers\Vue3\FiltersTransformer;
+            $transformers[] = new Transformers\Vue3\FunctionalComponentsTransformer;
         }
 
         // Vue 3.0 -> 3.2 (Script Setup)
         if (version_compare($from, '3.2', '<') && version_compare($to, '3.2', '>=')) {
-            $transformers[] = new Transformers\Vue32\ScriptSetupTransformer();
+            $transformers[] = new Transformers\Vue32\ScriptSetupTransformer;
         }
 
         return $transformers;
@@ -205,19 +234,19 @@ class VueJSModule extends AbstractModule
 
     private function hasVueTypeScriptFiles(string $path): bool
     {
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             return false;
         }
 
         // Check for .vue files with <script lang="ts">
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($path)
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($path)
         );
 
         foreach ($iterator as $file) {
             if ($file->isFile() && $file->getExtension() === 'vue') {
                 $content = file_get_contents($file->getPathname());
-                if (strpos($content, 'lang="ts"') !== false || strpos($content, "lang='ts'") !== false) {
+                if (mb_strpos($content, 'lang="ts"') !== false || mb_strpos($content, "lang='ts'") !== false) {
                     return true;
                 }
             }
@@ -228,7 +257,7 @@ class VueJSModule extends AbstractModule
 
     private function getLanguageModule(string $projectPath)
     {
-        if (!$this->registry) {
+        if (! $this->registry) {
             return null;
         }
 
@@ -281,7 +310,7 @@ class VueJSModule extends AbstractModule
     {
         $fromMajor = (int) explode('.', $from)[0];
         $toMajor = (int) explode('.', $to)[0];
-        
+
         return $fromMajor !== $toMajor;
     }
 
@@ -300,12 +329,12 @@ class VueJSModule extends AbstractModule
     private function updatePackageJson(string $projectPath, string $version): void
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return;
         }
 
         $package = json_decode(file_get_contents($packageFile), true);
-        
+
         // Update Vue
         if (isset($package['dependencies']['vue'])) {
             $package['dependencies']['vue'] = "^{$version}";
@@ -331,30 +360,5 @@ class VueJSModule extends AbstractModule
     {
         // Update vite.config or webpack config for Vue 3
         // Implementation would go here
-    }
-
-    protected function getDefaultConfig(): array
-    {
-        return [
-            'use_composition_api' => true,
-            'use_script_setup' => true,
-            'migrate_filters' => true,
-        ];
-    }
-
-    public function getConfigSchema(): array
-    {
-        return [
-            'use_composition_api' => [
-                'type' => 'boolean',
-                'description' => 'Migrate to Composition API',
-                'default' => true,
-            ],
-            'use_script_setup' => [
-                'type' => 'boolean',
-                'description' => 'Use <script setup> syntax',
-                'default' => true,
-            ],
-        ];
     }
 }

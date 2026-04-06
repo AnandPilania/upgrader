@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\ReactJS;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Upgrader\Core\AbstractModule;
 
 /**
@@ -11,7 +15,7 @@ use Upgrader\Core\AbstractModule;
 class ReactJSModule extends AbstractModule
 {
     private array $versions = [
-        '16.0', '16.8', '17.0', '18.0', '19.0'
+        '16.0', '16.8', '17.0', '18.0', '19.0',
     ];
 
     public function getName(): string
@@ -39,7 +43,7 @@ class ReactJSModule extends AbstractModule
     public function canHandle(string $projectPath): bool
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return false;
         }
 
@@ -55,7 +59,7 @@ class ReactJSModule extends AbstractModule
     public function detectCurrentVersion(string $projectPath): ?string
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return null;
         }
 
@@ -78,15 +82,15 @@ class ReactJSModule extends AbstractModule
     {
         $currentVersion = $this->detectCurrentVersion($projectPath);
         $useTypeScript = $this->usesTypeScript($projectPath);
-        
+
         // Get language module analysis
         $langModule = $this->getLanguageModule($projectPath);
         $langAnalysis = null;
-        
+
         if ($langModule) {
             $currentLangVersion = $langModule->detectCurrentVersion($projectPath);
             $targetLangVersion = $this->getRecommendedLanguageVersion($targetVersion, $useTypeScript);
-            
+
             if ($currentLangVersion && version_compare($currentLangVersion, $targetLangVersion, '<')) {
                 $langAnalysis = $langModule->analyze($projectPath, $targetLangVersion);
             }
@@ -115,9 +119,9 @@ class ReactJSModule extends AbstractModule
         if ($langModule) {
             $currentLangVersion = $langModule->detectCurrentVersion($projectPath);
             $targetLangVersion = $this->getRecommendedLanguageVersion($toVersion, $useTypeScript);
-            
+
             if ($currentLangVersion && version_compare($currentLangVersion, $targetLangVersion, '<')) {
-                $this->log("Upgrading " . ($useTypeScript ? 'TypeScript' : 'JavaScript'));
+                $this->log('Upgrading ' . ($useTypeScript ? 'TypeScript' : 'JavaScript'));
                 $results['language_upgrade'] = $langModule->upgrade(
                     $projectPath,
                     $currentLangVersion,
@@ -167,9 +171,34 @@ class ReactJSModule extends AbstractModule
             );
         }
 
-        usort($transformers, fn($a, $b) => $b->getPriority() <=> $a->getPriority());
+        usort($transformers, fn ($a, $b) => $b->getPriority() <=> $a->getPriority());
 
         return $transformers;
+    }
+
+    public function getConfigSchema(): array
+    {
+        return [
+            'migrate_to_hooks' => [
+                'type' => 'boolean',
+                'description' => 'Automatically migrate class components to hooks',
+                'default' => true,
+            ],
+            'enable_strict_mode' => [
+                'type' => 'boolean',
+                'description' => 'Wrap app in React.StrictMode',
+                'default' => true,
+            ],
+        ];
+    }
+
+    protected function getDefaultConfig(): array
+    {
+        return [
+            'migrate_to_hooks' => true,
+            'enable_strict_mode' => true,
+            'update_types' => true,
+        ];
     }
 
     private function getVersionTransformers(string $from, string $to): array
@@ -178,21 +207,21 @@ class ReactJSModule extends AbstractModule
 
         // React 16.0 -> 16.8 (Hooks introduction)
         if (version_compare($from, '16.8', '<') && version_compare($to, '16.8', '>=')) {
-            $transformers[] = new Transformers\React168\HooksTransformer();
-            $transformers[] = new Transformers\React168\ClassToFunctionalTransformer();
+            $transformers[] = new Transformers\React168\HooksTransformer;
+            $transformers[] = new Transformers\React168\ClassToFunctionalTransformer;
         }
 
         // React 16.x -> 17.0
         if (version_compare($from, '17.0', '<') && version_compare($to, '17.0', '>=')) {
-            $transformers[] = new Transformers\React17\JSXTransformTransformer();
-            $transformers[] = new Transformers\React17\EventPoolingTransformer();
+            $transformers[] = new Transformers\React17\JSXTransformTransformer;
+            $transformers[] = new Transformers\React17\EventPoolingTransformer;
         }
 
         // React 17.x -> 18.0
         if (version_compare($from, '18.0', '<') && version_compare($to, '18.0', '>=')) {
-            $transformers[] = new Transformers\React18\ConcurrentFeaturesTransformer();
-            $transformers[] = new Transformers\React18\AutomaticBatchingTransformer();
-            $transformers[] = new Transformers\React18\SuspenseTransformer();
+            $transformers[] = new Transformers\React18\ConcurrentFeaturesTransformer;
+            $transformers[] = new Transformers\React18\AutomaticBatchingTransformer;
+            $transformers[] = new Transformers\React18\SuspenseTransformer;
         }
 
         return $transformers;
@@ -206,12 +235,12 @@ class ReactJSModule extends AbstractModule
 
     private function hasTypeScriptFiles(string $path): bool
     {
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             return false;
         }
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($path)
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($path)
         );
 
         foreach ($iterator as $file) {
@@ -225,7 +254,7 @@ class ReactJSModule extends AbstractModule
 
     private function getLanguageModule(string $projectPath)
     {
-        if (!$this->registry) {
+        if (! $this->registry) {
             return null;
         }
 
@@ -287,12 +316,12 @@ class ReactJSModule extends AbstractModule
     private function updatePackageJson(string $projectPath, string $version): void
     {
         $packageFile = $projectPath . '/package.json';
-        if (!file_exists($packageFile)) {
+        if (! file_exists($packageFile)) {
             return;
         }
 
         $package = json_decode(file_get_contents($packageFile), true);
-        
+
         // Update React and React DOM
         if (isset($package['dependencies']['react'])) {
             $package['dependencies']['react'] = "^{$version}";
@@ -309,30 +338,5 @@ class ReactJSModule extends AbstractModule
             $packageFile,
             json_encode($package, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"
         );
-    }
-
-    protected function getDefaultConfig(): array
-    {
-        return [
-            'migrate_to_hooks' => true,
-            'enable_strict_mode' => true,
-            'update_types' => true,
-        ];
-    }
-
-    public function getConfigSchema(): array
-    {
-        return [
-            'migrate_to_hooks' => [
-                'type' => 'boolean',
-                'description' => 'Automatically migrate class components to hooks',
-                'default' => true,
-            ],
-            'enable_strict_mode' => [
-                'type' => 'boolean',
-                'description' => 'Wrap app in React.StrictMode',
-                'default' => true,
-            ],
-        ];
     }
 }

@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Console;
 
-use Upgrader\Services\ModuleLoader;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Console\Attribute\AsCommand;
+use Upgrader\Services\ModuleLoader;
 
 #[AsCommand(name: 'modules')]
 class ModulesCommand extends Command
@@ -24,13 +26,14 @@ class ModulesCommand extends Command
 
         $io->title('Available Upgrade Modules');
 
-        $loader = new ModuleLoader();
+        $loader = new ModuleLoader;
         $registry = $loader->loadAllModules();
 
         $modules = $registry->getAll();
 
         if (empty($modules)) {
             $io->warning('No modules found');
+
             return Command::SUCCESS;
         }
 
@@ -68,7 +71,7 @@ class ModulesCommand extends Command
 
         // Validate dependencies
         $errors = $registry->validateDependencies();
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             $io->section('Dependency Issues');
             $io->error($errors);
         } else {

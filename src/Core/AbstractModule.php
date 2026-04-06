@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Core;
 
 /**
@@ -11,19 +13,67 @@ abstract class AbstractModule implements UpgradeModuleInterface
     protected array $dependencies = [];
     protected ?ModuleRegistry $registry = null;
 
-    public function initialize(array $config): void
+    final public function initialize(array $config): void
     {
         $this->config = array_merge($this->getDefaultConfig(), $config);
     }
 
-    public function getDependencies(): array
+    final public function getDependencies(): array
     {
         return $this->dependencies;
     }
 
-    public function setRegistry(ModuleRegistry $registry): void
+    final public function setRegistry(ModuleRegistry $registry): void
     {
         $this->registry = $registry;
+    }
+
+    /**
+     * Check if all dependencies are available
+     */
+    final public function checkDependencies(): bool
+    {
+        if (! $this->registry) {
+            return false;
+        }
+
+        foreach ($this->getDependencies() as $dependency) {
+            if (! $this->registry->hasModule($dependency)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    final public function getConfigSchema(): array
+    {
+        return [];
+    }
+
+    final public function canUpgrade(string $projectPath, string $fromVersion, string $toVersion): bool
+    {
+        $availableVersions = $this->getAvailableVersions();
+
+        return in_array($fromVersion, $availableVersions) && in_array($toVersion, $availableVersions);
+    }
+
+    final public function getUpgradePath(string $fromVersion, string $toVersion): array
+    {
+        $versions = $this->getAvailableVersions();
+        $fromIndex = array_search($fromVersion, $versions);
+        $toIndex = array_search($toVersion, $versions);
+
+        if ($fromIndex === false || $toIndex === false || $fromIndex >= $toIndex) {
+            return [];
+        }
+
+        return array_slice($versions, $fromIndex, $toIndex - $fromIndex + 1);
+    }
+
+    final public function getBreakingChanges(string $fromVersion, string $toVersion): array
+    {
+        return [];
     }
 
     /**
@@ -31,29 +81,11 @@ abstract class AbstractModule implements UpgradeModuleInterface
      */
     protected function getDependency(string $moduleName): ?ModuleInterface
     {
-        if (!$this->registry) {
+        if (! $this->registry) {
             return null;
         }
 
         return $this->registry->getModule($moduleName);
-    }
-
-    /**
-     * Check if all dependencies are available
-     */
-    public function checkDependencies(): bool
-    {
-        if (!$this->registry) {
-            return false;
-        }
-
-        foreach ($this->getDependencies() as $dependency) {
-            if (!$this->registry->hasModule($dependency)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**
@@ -70,35 +102,6 @@ abstract class AbstractModule implements UpgradeModuleInterface
     protected function getConfig(string $key, mixed $default = null): mixed
     {
         return $this->config[$key] ?? $default;
-    }
-
-    public function getConfigSchema(): array
-    {
-        return [];
-    }
-
-    public function canUpgrade(string $projectPath, string $fromVersion, string $toVersion): bool
-    {
-        $availableVersions = $this->getAvailableVersions();
-        return in_array($fromVersion, $availableVersions) && in_array($toVersion, $availableVersions);
-    }
-
-    public function getUpgradePath(string $fromVersion, string $toVersion): array
-    {
-        $versions = $this->getAvailableVersions();
-        $fromIndex = array_search($fromVersion, $versions);
-        $toIndex = array_search($toVersion, $versions);
-
-        if ($fromIndex === false || $toIndex === false || $fromIndex >= $toIndex) {
-            return [];
-        }
-
-        return array_slice($versions, $fromIndex, $toIndex - $fromIndex + 1);
-    }
-
-    public function getBreakingChanges(string $fromVersion, string $toVersion): array
-    {
-        return [];
     }
 
     /**

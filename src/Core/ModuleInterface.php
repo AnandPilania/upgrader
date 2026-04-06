@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Core;
 
 /**
@@ -24,7 +26,7 @@ interface ModuleInterface
 
     /**
      * Get module dependencies (other modules this module depends on)
-     * 
+     *
      * @return array<string> Array of module names
      */
     public function getDependencies(): array;

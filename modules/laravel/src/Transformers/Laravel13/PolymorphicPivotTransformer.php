@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Upgrader\Modules\Laravel\Transformers\Laravel13;
 
 use Upgrader\Core\TransformerInterface;
 
 /**
  * Laravel 13 Transformer: Polymorphic Pivot Table Names
- * 
+ *
  * Warns about changes to polymorphic pivot table name generation.
  */
 class PolymorphicPivotTransformer implements TransformerInterface
@@ -30,8 +32,8 @@ class PolymorphicPivotTransformer implements TransformerInterface
     {
         // Check if project has pivot models
         $modelsPath = $projectPath . '/app/Models';
-        
-        if (!is_dir($modelsPath)) {
+
+        if (! is_dir($modelsPath)) {
             return false;
         }
 
@@ -75,10 +77,10 @@ class PolymorphicPivotTransformer implements TransformerInterface
     private function hasPivotModels(string $path): bool
     {
         $files = glob($path . '/*.php');
-        
+
         foreach ($files as $file) {
             $content = file_get_contents($file);
-            if (str_contains($content, 'extends Pivot') || 
+            if (str_contains($content, 'extends Pivot') ||
                 str_contains($content, 'use Illuminate\Database\Eloquent\Relations\Pivot')) {
                 return true;
             }
@@ -91,10 +93,10 @@ class PolymorphicPivotTransformer implements TransformerInterface
     {
         $pivotModels = [];
         $files = glob($path . '/*.php');
-        
+
         foreach ($files as $file) {
             $content = file_get_contents($file);
-            if (str_contains($content, 'extends Pivot') || 
+            if (str_contains($content, 'extends Pivot') ||
                 str_contains($content, 'extends MorphPivot')) {
                 $pivotModels[] = $file;
             }
@@ -106,12 +108,12 @@ class PolymorphicPivotTransformer implements TransformerInterface
     private function generatePivotWarnings(array $pivotModels): array
     {
         $warnings = [];
-        
+
         foreach ($pivotModels as $model) {
             $content = file_get_contents($model);
-            
+
             // Check if $table property is defined
-            if (!preg_match('/protected\s+\$table\s*=/', $content)) {
+            if (! preg_match('/protected\s+\$table\s*=/', $content)) {
                 $warnings[] = 'Model ' . basename($model) . ' may need explicit $table property';
             }
         }
